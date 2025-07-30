@@ -17,8 +17,8 @@ interface PatientListResponse {
 
 // patient_id in payload is the id from PatientDetails of the selected patient
 type Payload  = 
-    { patient_id: string, transcript: string, notes: string } 
-  | { patient_id: string, transcript: string, notes_json: object }
+    { patient_id: string, transcript: string, audio_base64?: string } & 
+    ({ notes: string } |  { notes_json: object })
 
 // --- Server Setup ---
 const app = express();
@@ -42,7 +42,8 @@ app.use(cors());
 
 // 2. JSON Body Parser
 // This middleware parses incoming request bodies with "Content-Type: application/json"
-app.use(express.json());
+// Increase the body parser limit to handle large audio payloads, default is 100kb
+app.use(express.json({ limit: '50mb' }));
 
 
 // 3. Authentication Middleware
@@ -117,6 +118,15 @@ app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
     return;
   }
 
+  // Conditionally render the audio player if audio data exists
+  const audioPlayerHtml = latestNoteData.audio_base64 ? `
+    <h2>Audio Recording</h2>
+    <audio controls style="width: 100%;">
+      <source src="${latestNoteData.audio_base64}" type="audio/webm">
+      Your browser does not support the audio element.
+    </audio>
+  ` : '';
+
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -137,8 +147,12 @@ app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
         <h1>Received Medical Note</h1>
         <h2>Patient Information</h2>
         <p><span class="label">Patient ID:</span> ${latestNoteData.patient_id}</p>
+
+        ${audioPlayerHtml}
+
         <h2>Full Transcript</h2>
         <pre>${latestNoteData.transcript}</pre>
+
         <h2>Formatted Notes</h2>
         ${"notes" in latestNoteData &&
           `<pre>${latestNoteData.notes}</pre>`
