@@ -3,12 +3,12 @@ import cors from 'cors';
 import open from 'open';
 
 interface PatientDetails {
-  id: string;
+  id: string; // should be url-safe and at max 32 characters 
+  
   display_name: string,
-
   display_id?: string,
-  gender?: string,
-  age?: string,
+  display_gender?: string,
+  display_birthdate?: string, // yyyy-mm-dd format
 }
 
 interface PatientListResponse {
@@ -17,15 +17,15 @@ interface PatientListResponse {
 
 // patient_id in payload is the id from PatientDetails of the selected patient
 type Payload  = 
-    { patient_id: string, transcript: string, audio_base64?: string } & 
-    ({ notes: string } |  { notes_json: object })
+    { patient_id: string, transcript?: string, audio_base64?: string, note_title?: string } & 
+    ({ notes: string } |  { notes_json: object, notes_template: string })
 
 // --- Server Setup ---
 const app = express();
 const PORT = 3001;
 
 // This is the secret API key the app must send in Authorization header as Bearer token.
-const API_KEY = 'your-super-secret-api-key-for-the-plugin';
+const API_KEY = 'your-super-secret-api-key';
 
 // --- In-Memory Storage ---
 // This variable will hold the data from the last POST request.
@@ -79,14 +79,24 @@ const requireApiKey = (req: Request, res: Response, next: NextFunction) => {
 app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListResponse>) => {
   console.log(`[${new Date().toISOString()}] GET /patients request received.`);
 
-  const dummyPatient: PatientDetails = {
+  const dummyPatient1: PatientDetails = {
     id: 'pat_12345_dummy',
-    display_name: 'John Doe (Test Patient)',
+    display_name: 'John Doe',
     display_id: 'JD-001',
+    display_gender: 'Male',
+    display_birthdate: "1970-06-22",
+  };
+
+  const dummyPatient2: PatientDetails = {
+    id: 'pat_67890_dummy',
+    display_name: 'Jane Doe',
+    display_id: 'JD-002',
+    display_gender: 'Female',
+    display_birthdate: "2000-05-15",
   };
 
   const responseData: PatientListResponse = {
-    patients: [dummyPatient],
+    patients: [dummyPatient1, dummyPatient2],
   };
 
   res.status(200).json(responseData);
