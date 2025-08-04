@@ -16,9 +16,23 @@ interface PatientListResponse {
 }
 
 // patient_id in payload is the id from PatientDetails of the selected patient
-type Payload  = 
-    { patient_id: string, transcript?: string, audio_base64?: string, note_title?: string } & 
-    ({ notes: string } |  { notes_json: object, notes_template: string })
+type PostNoteForm = 
+    { 
+      patient_id: string, 
+      transcript?: string, // if user selects send transcript in prescription settings
+      audio_base64?: string[], // if user selects send transcript in prescription settings
+      note_title: string 
+    } & 
+    (
+      { 
+        notes: string  // if user selects unstructred note format
+      } 
+      | 
+      { 
+        notes_json: object,  // if user selects structured note format
+        notes_template: string 
+      }
+    )
 
 // --- Server Setup ---
 const app = express();
@@ -29,7 +43,7 @@ const API_KEY = 'your-super-secret-api-key';
 
 // --- In-Memory Storage ---
 // This variable will hold the data from the last POST request.
-let latestNoteData: Payload | null = null;
+let latestNoteData: PostNoteForm | null = null;
 
 
 // --- Middleware ---
@@ -104,7 +118,7 @@ app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListRes
 
 
 // 2. POST /notes - To post the generated notes
-app.post('/notes', requireApiKey, async (req: Request<any, any, Payload>, res: Response) => {
+app.post('/notes', requireApiKey, async (req: Request<any, any, PostNoteForm>, res: Response) => {
   console.log(`[${new Date().toISOString()}] POST /notes request received.`);
   console.log('--- Incoming Request Headers ---');
   console.log(JSON.stringify(req.headers, null, 2));
@@ -129,14 +143,16 @@ app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
   }
 
   // Conditionally render the audio player if audio data exists
-  const audioPlayerHtml = latestNoteData.audio_base64 ? `
-    <h2>Audio Recording</h2>
-    <audio controls style="width: 100%;">
-      <source src="${latestNoteData.audio_base64}" type="audio/webm">
-      Your browser does not support the audio element.
-    </audio>
-  ` : '';
-
+  const audioPlayerHtml = latestNoteData.audio_base64 && latestNoteData.audio_base64.length > 0
+    ? latestNoteData.audio_base64.map((audioData, index) => `
+        <h2>Audio Recording ${index + 1}</h2>
+        <audio controls style="width: 100%;">
+          <source src="${audioData}" type="audio/webm">
+          Your browser does not support the audio element.
+        </audio>
+      `).join('')
+    : '';
+    
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
