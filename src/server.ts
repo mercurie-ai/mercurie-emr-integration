@@ -9,6 +9,11 @@ interface PatientDetails {
   display_id?: string,
   display_gender?: string,
   display_birthdate?: string, // yyyy-mm-dd format
+
+  patient_summary?: {
+    get_endpoint?: string, // url to fetch patient summary notes, using the api key for external EMR
+    set_endpoint?: string, // url where to post edited summary notes, using the api key for external EMR
+  }
 }
 
 interface PatientListResponse {
@@ -20,12 +25,12 @@ type PostNoteForm =
     { 
       patient_id: string, 
       transcript?: string, // if user selects send transcript in prescription settings
-      audio_base64?: string[], // if user selects send transcript in prescription settings
+      audio_base64?: string[], // if user selects send audio in prescription settings
       note_title: string 
     } & 
     (
       { 
-        notes: string  // if user selects unstructred note format
+        notes: string  // if user selects unstructured note format
       } 
       | 
       { 
@@ -44,6 +49,12 @@ const API_KEY = 'your-super-secret-api-key';
 // --- In-Memory Storage ---
 // This variable will hold the data from the last POST request.
 let latestNoteData: PostNoteForm | null = null;
+
+// This object will hold the clinical summary notes for each patient.
+let patientSummaries: { [key: string]: string } = {
+  'pat_12345_dummy': 'John Doe has a history of hypertension and is currently on Lisinopril. He reports no new complaints today. Vitals are stable.',
+  'pat_67890_dummy': 'Jane Doe is here for her annual check-up. She has a pollen allergy and uses a seasonal nasal spray. She is up-to-date on all vaccinations.'
+};
 
 
 // --- Middleware ---
@@ -66,7 +77,6 @@ const requireApiKey = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
 
-  // For API calls from the extension, check the Bearer token
   if (token && token === API_KEY) {
     return next(); // Key is valid, proceed.
   }
@@ -99,6 +109,10 @@ app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListRes
     display_id: 'JD-001',
     display_gender: 'Male',
     display_birthdate: "1970-06-22",
+    patient_summary: {
+      get_endpoint: `http://localhost:${PORT}/patient-summary/pat_12345_dummy`,
+      set_endpoint: `http://localhost:${PORT}/patient-summary/pat_12345_dummy`,
+    }
   };
 
   const dummyPatient2: PatientDetails = {
@@ -107,6 +121,10 @@ app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListRes
     display_id: 'JD-002',
     display_gender: 'Female',
     display_birthdate: "2000-05-15",
+    patient_summary: {
+      get_endpoint: `http://localhost:${PORT}/patient-summary/pat_67890_dummy`,
+      set_endpoint: `http://localhost:${PORT}/patient-summary/pat_67890_dummy`,
+    }
   };
 
   const responseData: PatientListResponse = {
@@ -115,7 +133,6 @@ app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListRes
 
   res.status(200).json(responseData);
 });
-
 
 // 2. POST /notes - To post the generated notes
 app.post('/notes', requireApiKey, async (req: Request<any, any, PostNoteForm>, res: Response) => {
@@ -127,15 +144,47 @@ app.post('/notes', requireApiKey, async (req: Request<any, any, PostNoteForm>, r
   latestNoteData = req.body;
   console.log('Note data saved. Opening view in browser...');
 
-  // Automatically open a new browser tab to the display page.
-  // We pass the API key in the URL so the page can authenticate itself.
   await open(`http://localhost:${PORT}/view-note?apiKey=${API_KEY}`);
 
   res.status(200).json({ message: 'Note received and view opened in browser!' });
 });
 
+// 3. GET /patient-summary/:patientId - To fetch the clinical summary
+app.get('/patient-summary/:patientId', requireApiKey, (req: Request, res: Response) => {
+    const { patientId } = req.params;
+    console.log(`[${new Date().toISOString()}] GET /patient-summary/${patientId} request received.`);
 
-// 3. GET /view-note - This is the endpoint to display the data
+    const summary = patientSummaries[patientId];
+
+    if (summary) {
+        res.status(200).json({ summary_notes: summary });
+    } else {
+        res.status(404).json({ error: 'Not Found', message: 'No summary found for this patient.' });
+    }
+});
+
+// 4. POST /patient-summary/:patientId - To update the clinical summary
+app.post('/patient-summary/:patientId', requireApiKey, (req: Request, res: Response) => {
+    const { patientId } = req.params;
+    const { summary_notes } = req.body;
+
+    console.log(`[${new Date().toISOString()}] POST /patient-summary/${patientId} request received.`);
+
+    if (patientSummaries.hasOwnProperty(patientId)) {
+        if (typeof summary_notes === 'string') {
+            patientSummaries[patientId] = summary_notes;
+            console.log(`Summary for ${patientId} updated to: "${summary_notes}"`);
+            res.status(200).json({ message: 'Summary updated successfully.' });
+        } else {
+            res.status(400).json({ error: 'Bad Request', message: 'Request body must contain a "summary_notes" string.' });
+        }
+    } else {
+        res.status(404).json({ error: 'Not Found', message: 'Patient not found.' });
+    }
+});
+
+
+// 5. GET /view-note - This is the endpoint to display the data
 app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
   if (!latestNoteData) {
     res.status(404).send('<h1>No note data available.</h1><p>Please post a note from the extension first.</p>');
@@ -203,5 +252,7 @@ app.listen(PORT, () => {
   console.log('---------------------------------------------------------');
   console.log(`   - Patient List Endpoint (GET): http://localhost:${PORT}/patients`);
   console.log(`   - Post Notes Endpoint (POST):  http://localhost:${PORT}/notes`);
+  console.log(`   - Get Summary (GET):           http://localhost:${PORT}/patient-summary/:patientId`);
+  console.log(`   - Set Summary (POST):          http://localhost:${PORT}/patient-summary/:patientId`);
   console.log('\nWhen you post a note, a new browser tab will open to display it.');
 });
