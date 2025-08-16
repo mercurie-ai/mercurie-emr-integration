@@ -2,25 +2,30 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import open from 'open';
 
+// --- Type Definitions for API Contracts ---
+
+// Describes the structure of a single patient's details.
 interface PatientDetails {
-  id: string; // should be url-safe and at max 32 characters 
+  id: string; // should be url-safe with at max 64 characters 
   
-  display_name: string,
-  display_id?: string,
-  display_gender?: string,
-  display_birthdate?: string, // yyyy-mm-dd format
+  display_name: string;
+  display_id?: string;
+  display_gender?: string;
+  display_birthdate?: string; // yyyy-mm-dd format
 
   patient_summary?: {
-    get_endpoint?: string, // url to fetch patient summary notes, using the api key for external EMR
-    set_endpoint?: string, // url where to post edited summary notes, using the api key for external EMR
+    get_endpoint?: string; // url to fetch patient summary notes, using the api key for external EMR
+    set_endpoint?: string; // url where to post edited summary notes, using the api key for external EMR
   }
 }
 
+// Defines the shape of the response for the patient list endpoint.
 interface PatientListResponse {
   patients: PatientDetails[];
 }
 
-// patient_id in payload is the id from PatientDetails of the selected patient
+// Defines the structure of the data sent when posting a new note.
+// It supports both unstructured and structured note formats.
 type PostNoteForm = 
     { 
       patient_id: string, 
@@ -38,6 +43,34 @@ type PostNoteForm =
         notes_template: string 
       }
     )
+
+// Defines the structure of the response after successfully posting a note.
+interface PostNoteResponse {
+    message: string;
+}
+
+// Defines the structure for getting a patient's summary.
+interface GetSummaryResponse {
+    summary_notes: string;
+}
+
+// Defines the structure for setting a patient's summary.
+interface SetSummaryRequest {
+    summary_notes: string;
+}
+
+// Defines the structure of the response after successfully setting a summary.
+interface SetSummaryResponse {
+    message: string;
+}
+
+// Defines the error response structure for all endpoints.
+interface ErrorResponse {
+    error: string;
+    message: string;
+}
+
+// --- Type Definitions End Here ---
 
 // --- Server Setup ---
 const app = express();
@@ -135,7 +168,7 @@ app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListRes
 });
 
 // 2. POST /notes - To post the generated notes
-app.post('/notes', requireApiKey, async (req: Request<any, any, PostNoteForm>, res: Response) => {
+app.post('/notes', requireApiKey, async (req: Request<{}, {}, PostNoteForm>, res: Response<PostNoteResponse>) => {
   console.log(`[${new Date().toISOString()}] POST /notes request received.`);
   console.log('--- Incoming Request Headers ---');
   console.log(JSON.stringify(req.headers, null, 2));
@@ -150,7 +183,7 @@ app.post('/notes', requireApiKey, async (req: Request<any, any, PostNoteForm>, r
 });
 
 // 3. GET /patient-summary/:patientId - To fetch the clinical summary
-app.get('/patient-summary/:patientId', requireApiKey, (req: Request, res: Response) => {
+app.get('/patient-summary/:patientId', requireApiKey, (req: Request<{ patientId: string }>, res: Response<GetSummaryResponse | ErrorResponse>) => {
     const { patientId } = req.params;
     console.log(`[${new Date().toISOString()}] GET /patient-summary/${patientId} request received.`);
 
@@ -164,7 +197,7 @@ app.get('/patient-summary/:patientId', requireApiKey, (req: Request, res: Respon
 });
 
 // 4. POST /patient-summary/:patientId - To update the clinical summary
-app.post('/patient-summary/:patientId', requireApiKey, (req: Request, res: Response) => {
+app.post('/patient-summary/:patientId', requireApiKey, (req: Request<{ patientId: string }, {}, SetSummaryRequest>, res: Response<SetSummaryResponse | ErrorResponse>) => {
     const { patientId } = req.params;
     const { summary_notes } = req.body;
 
@@ -250,8 +283,9 @@ app.listen(PORT, () => {
   console.log('---------------------------------------------------------');
   console.log(`🔑 Your API Key is: "${API_KEY}"`);
   console.log('---------------------------------------------------------');
-  console.log(`   - Patient List Endpoint (GET): http://localhost:${PORT}/patients`);
-  console.log(`   - Post Notes Endpoint (POST):  http://localhost:${PORT}/notes`);
+  console.log('Available Endpoints:');
+  console.log(`   - Patient List (GET):          http://localhost:${PORT}/patients`);
+  console.log(`   - Post Notes (POST):           http://localhost:${PORT}/notes`);
   console.log(`   - Get Summary (GET):           http://localhost:${PORT}/patient-summary/:patientId`);
   console.log(`   - Set Summary (POST):          http://localhost:${PORT}/patient-summary/:patientId`);
   console.log('\nWhen you post a note, a new browser tab will open to display it.');
