@@ -42,7 +42,7 @@ npm run start
 
 Once the server is running, your console will display:
 - A secret API Key: This key must be sent in the Authorization header of every request for authentication.
-- A list of available Endpoints: These are the URLs you will configure in the Mercurie platform settings to connect to this server.
+- A list of available Endpoints: You will need to configure the 'Get All Endpoints' URL in the Mercurie platform settings to connect to this server.
 
 ```
 🩺 Test Server is running on http://localhost:3001
@@ -50,10 +50,13 @@ Once the server is running, your console will display:
 🔑 Your API Key is: "your-super-secret-api-key"
 ---------------------------------------------------------
 Available Endpoints:
+   - Get All Endpoints (GET):   http://localhost:3001/endpoints
    - Patient List (GET):        http://localhost:3001/patients
    - Post Notes (POST):         http://localhost:3001/notes
    - Get Summary (GET):         http://localhost:3001/patient-summary/:patientId
    - Set Summary (POST):        http://localhost:3001/patient-summary/:patientId
+   - Get Encounters (GET):      http://localhost:3001/patients/:patientId/encounters
+   - Get Encounter Note (GET):  http://localhost:3001/encounters/:encounterId
 
 When you post a note, a new browser tab will open to display it.
 ```

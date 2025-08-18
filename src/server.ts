@@ -4,6 +4,18 @@ import open from 'open';
 
 // --- Type Definitions for API Contracts ---
 
+// Defines the shape of the response for the available endpoints.
+interface EndpointsResponse {
+  get_patients: string; // endpoint to fetch patient list
+  post_note: string; // endpoint to post notes
+
+  get_patient_summary?: string; // endpoint to fetch summary notes for a patient, use :patientId to capture patient ID in the URL
+  set_patient_summary?: string; // endpoint to set summary notes for a patient, use :patientId to capture patient ID in the URL
+
+  get_patient_encounters?: string; // endpoint to get encounter list for a patient, use :patientId to capture patient ID in the URL 
+  get_encounter_note?: string; // endpint to get notes for a particular encounter, use :patientID to capture patient ID and :encounterId to capture encounter ID in the URL 
+}
+
 // Describes the structure of a single patient's details.
 interface PatientDetails {
   id: string; // should be url-safe with at max 64 characters 
@@ -12,11 +24,6 @@ interface PatientDetails {
   display_id?: string;
   display_gender?: string;
   display_birthdate?: string; // yyyy-mm-dd format
-
-  patient_summary?: {
-    get_endpoint?: string; // url to fetch patient summary notes, using the api key for external EMR
-    set_endpoint?: string; // url where to post edited summary notes, using the api key for external EMR
-  }
 }
 
 // Defines the shape of the response for the patient list endpoint.
@@ -28,10 +35,12 @@ interface PatientListResponse {
 // It supports both unstructured and structured note formats.
 type PostNoteForm = 
     { 
-      patient_id: string, 
+      patient_id: string,
+      encounter_id?: string, // If present, update existing encounter. If absent, create new
+
       transcript?: string, // if user selects send transcript in prescription settings
       audio_base64?: string[], // if user selects send audio in prescription settings
-      note_title: string 
+      note_title: string,
     } & 
     (
       { 
@@ -64,6 +73,23 @@ interface SetSummaryResponse {
     message: string;
 }
 
+// Describes the structure of a single encounter.
+interface EncounterDetails {
+  id: string; // should be url-safe with at max 64 characters
+  display_name: string;
+  date: string; // yyyy-mm-dd format
+}
+
+// Defines the shape of the response for the encounter list endpoint.
+interface EncounterListResponse {
+  encounters: EncounterDetails[];
+}
+
+// Defines the structure for getting a saved note for an encounter.
+interface GetEncounterNoteResponse {
+    note: string;
+}
+
 // Defines the error response structure for all endpoints.
 interface ErrorResponse {
     error: string;
@@ -75,13 +101,34 @@ interface ErrorResponse {
 // --- Server Setup ---
 const app = express();
 const PORT = 3001;
+const BASE_URL = `http://localhost:${PORT}`;
+
 
 // This is the secret API key the app must send in Authorization header as Bearer token.
 const API_KEY = 'your-super-secret-api-key';
 
 // --- In-Memory Storage ---
+
 // This variable will hold the data from the last POST request.
 let latestNoteData: PostNoteForm | null = null;
+
+
+let patients = [
+  {
+    id: 'pat_12345_dummy',
+    display_name: 'John Doe',
+    display_id: 'JD-001',
+    display_gender: 'Male',
+    display_birthdate: "1970-06-22",
+  }, 
+  {
+    id: 'pat_67890_dummy',
+    display_name: 'Jane Doe',
+    display_id: 'JD-002',
+    display_gender: 'Female',
+    display_birthdate: "2000-05-15",
+  }
+];
 
 // This object will hold the clinical summary notes for each patient.
 let patientSummaries: { [key: string]: string } = {
@@ -89,6 +136,22 @@ let patientSummaries: { [key: string]: string } = {
   'pat_67890_dummy': 'Jane Doe is here for her annual check-up. She has a pollen allergy and uses a seasonal nasal spray. She is up-to-date on all vaccinations.'
 };
 
+// This object will hold the encounters for each patient.
+let patientEncounters: { [key: string]: EncounterDetails[] } = {
+  'pat_12345_dummy': [
+    { id: 'enc_1', display_name: 'Follow-up on Hypertension', date: '2025-08-10'},
+    { id: 'enc_2', display_name: 'Annual Check-up', date: '2024-07-15' },
+  ],
+  'pat_67890_dummy': [
+    { id: 'enc_3', display_name: 'Allergy Consultation', date: '2025-08-01' },
+  ],
+};
+
+let encounterNotes: { [key: string]: string } = {
+  'enc_1': 'Patient presented for a follow-up on their hypertension. Blood pressure is well-controlled with Lisinopril. No new complaints. Advised to continue current medication and monitor blood pressure at home.',
+  'enc_2': 'Annual check-up. Patient is in good health. Discussed importance of diet and exercise. All vaccinations are up-to-date.',
+  'enc_3': 'Patient reports seasonal allergies. Prescribed a nasal spray to be used as needed. Advised to avoid known allergens.',
+};
 
 // --- Middleware ---
 
@@ -132,36 +195,28 @@ const requireApiKey = (req: Request, res: Response, next: NextFunction) => {
 // --- PROTECTED API Endpoints ---
 // We add the 'requireApiKey' middleware to each route we want to protect.
 
+// 0. GET /endpoints - To fetch the available API endpoints
+app.get('/endpoints', requireApiKey, (_req: Request, res: Response<EndpointsResponse>) => {
+    console.log(`[${new Date().toISOString()}] GET /endpoints request received.`);
+
+    const responseData: EndpointsResponse = {
+        get_patients: `${BASE_URL}/patients`,
+        post_note: `${BASE_URL}/notes`,
+        get_patient_summary: `${BASE_URL}/patient-summary/:patientId`,
+        set_patient_summary: `${BASE_URL}/patient-summary/:patientId`,
+        get_patient_encounters: `${BASE_URL}/patients/:patientId/encounters`,
+        get_encounter_note: `${BASE_URL}/encounters/:encounterId`,
+    }
+    
+    res.status(200).json(responseData);
+});
+
 // 1. GET /patients - To fetch the patient list
 app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListResponse>) => {
   console.log(`[${new Date().toISOString()}] GET /patients request received.`);
 
-  const dummyPatient1: PatientDetails = {
-    id: 'pat_12345_dummy',
-    display_name: 'John Doe',
-    display_id: 'JD-001',
-    display_gender: 'Male',
-    display_birthdate: "1970-06-22",
-    patient_summary: {
-      get_endpoint: `http://localhost:${PORT}/patient-summary/pat_12345_dummy`,
-      set_endpoint: `http://localhost:${PORT}/patient-summary/pat_12345_dummy`,
-    }
-  };
-
-  const dummyPatient2: PatientDetails = {
-    id: 'pat_67890_dummy',
-    display_name: 'Jane Doe',
-    display_id: 'JD-002',
-    display_gender: 'Female',
-    display_birthdate: "2000-05-15",
-    patient_summary: {
-      get_endpoint: `http://localhost:${PORT}/patient-summary/pat_67890_dummy`,
-      set_endpoint: `http://localhost:${PORT}/patient-summary/pat_67890_dummy`,
-    }
-  };
-
   const responseData: PatientListResponse = {
-    patients: [dummyPatient1, dummyPatient2],
+    patients,
   };
 
   res.status(200).json(responseData);
@@ -177,7 +232,7 @@ app.post('/notes', requireApiKey, async (req: Request<{}, {}, PostNoteForm>, res
   latestNoteData = req.body;
   console.log('Note data saved. Opening view in browser...');
 
-  await open(`http://localhost:${PORT}/view-note?apiKey=${API_KEY}`);
+  await open(`${BASE_URL}/view-note?apiKey=${API_KEY}`);
 
   res.status(200).json({ message: 'Note received and view opened in browser!' });
 });
@@ -217,7 +272,41 @@ app.post('/patient-summary/:patientId', requireApiKey, (req: Request<{ patientId
 });
 
 
-// 5. GET /view-note - This is the endpoint to display the data
+// 6. GET /patients/:patientId/encounters - To fetch the encounter list for a patient
+app.get('/patients/:patientId/encounters', requireApiKey, (req: Request<{ patientId: string }>, res: Response<EncounterListResponse | ErrorResponse>) => {
+    const { patientId } = req.params;
+    console.log(`[${new Date().toISOString()}] GET /patients/${patientId}/encounters request received.`);
+
+    const encounters = patientEncounters[patientId];
+
+    if (encounters) {
+        res.status(200).json({ encounters: encounters });
+    } else {
+        // Return an empty list if the patient exists but has no encounters
+        if (patientSummaries.hasOwnProperty(patientId)) {
+            res.status(200).json({ encounters: [] });
+        } else {
+            res.status(404).json({ error: 'Not Found', message: 'No encounters found for this patient.' });
+        }
+    }
+});
+
+// 6. GET /encounters/:encounterId - To fetch the saved note for an encounter
+app.get('/encounters/:encounterId', requireApiKey, (req: Request<{ encounterId: string }>, res: Response<GetEncounterNoteResponse | ErrorResponse>) => {
+    const { encounterId } = req.params;
+    console.log(`[${new Date().toISOString()}] GET /encounters/${encounterId} request received.`);
+
+    const note = encounterNotes[encounterId];
+
+    if (note) {
+        res.status(200).json({ note: note });
+    } else {
+        res.status(404).json({ error: 'Not Found', message: 'No note found for this encounter.' });
+    }
+});
+
+
+// A1. GET /view-note - This is the endpoint to display the data
 app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
   if (!latestNoteData) {
     res.status(404).send('<h1>No note data available.</h1><p>Please post a note from the extension first.</p>');
@@ -276,17 +365,19 @@ app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
   res.send(htmlContent);
 });
 
-
 // --- Start the server ---
 app.listen(PORT, () => {
-  console.log(`\n🩺 Test Server is running on http://localhost:${PORT}`);
+  console.log(`\n🩺 Test Server is running on ${BASE_URL}`);
   console.log('---------------------------------------------------------');
   console.log(`🔑 Your API Key is: "${API_KEY}"`);
   console.log('---------------------------------------------------------');
   console.log('Available Endpoints:');
-  console.log(`   - Patient List (GET):          http://localhost:${PORT}/patients`);
-  console.log(`   - Post Notes (POST):           http://localhost:${PORT}/notes`);
-  console.log(`   - Get Summary (GET):           http://localhost:${PORT}/patient-summary/:patientId`);
-  console.log(`   - Set Summary (POST):          http://localhost:${PORT}/patient-summary/:patientId`);
+  console.log(`   - Get All Endpoints (GET):     ${BASE_URL}/endpoints`);
+  console.log(`   - Patient List (GET):          ${BASE_URL}/patients`);
+  console.log(`   - Post Notes (POST):           ${BASE_URL}/notes`);
+  console.log(`   - Get Summary (GET):           ${BASE_URL}/patient-summary/:patientId`);
+  console.log(`   - Set Summary (POST):          ${BASE_URL}/patient-summary/:patientId`);
+  console.log(`   - Get Encounters (GET):        ${BASE_URL}/patients/:patientId/encounters`);
+  console.log(`   - Get Encounter Note (GET):    ${BASE_URL}/encounters/:encounterId`);
   console.log('\nWhen you post a note, a new browser tab will open to display it.');
 });
