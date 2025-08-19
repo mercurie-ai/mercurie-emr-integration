@@ -176,7 +176,7 @@ app.post('/notes', requireApiKey, async (req: Request<{}, {}, PostNoteForm>, res
   const noteContent = 'notes' in req.body ? req.body.notes : JSON.stringify(req.body.notes_json, null, 2);
   encounterNotes[encounterId] = noteContent;
 
-  res.status(200).json({ message: 'Note received and view opened in browser!', encounter_id: encounterId });
+  res.status(200).json({ encounter_id: encounterId });
 });
 
 // 3. GET /patient-summary/:patientId - To fetch the clinical summary

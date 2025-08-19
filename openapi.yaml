@@ -188,6 +188,7 @@ components:
     # REQUEST/RESPONSE MODELS
     EndpointsResponse:
       type: object
+      required: [get_patients, post_note]
       properties:
         get_patients:
           type: string
@@ -210,6 +211,7 @@ components:
 
     PatientListResponse:
       type: object
+      required: [patients]
       properties:
         patients:
           type: array
@@ -229,11 +231,13 @@ components:
           description: If present, update existing encounter. If absent, create new.
         transcript:
           type: string
+          description: The trancript of the conversations from the session. Whether this field is included can be configured on Mercurie external EMR settings. 
         audio_base64:
           type: array
           items:
             type: string
             format: byte
+          description: An array of base64-encoded data URLs of the audio recordings from the session. Whether this field is included can be configured on Mercurie external EMR settings. 
         note_title:
           type: string
       oneOf:
@@ -252,20 +256,21 @@ components:
 
     PostNoteResponse:
       type: object
+      required: [encounter_id]
       properties:
-        message:
-          type: string
         encounter_id:
           type: string
 
     GetSummaryResponse:
       type: object
+      required: [summary_notes]
       properties:
         summary_notes:
           type: string
 
     SetSummaryRequest:
       type: object
+      required: [summary_notes]
       properties:
         summary_notes:
           type: string
@@ -278,6 +283,7 @@ components:
 
     EncounterListResponse:
       type: object
+      required: [encounters]
       properties:
         encounters:
           type: array
@@ -286,12 +292,14 @@ components:
 
     GetEncounterNoteResponse:
       type: object
+      required: [note]
       properties:
         note:
           type: string
 
     ErrorResponse:
       type: object
+      required: [error, message]
       properties:
         error:
           type: string
@@ -301,6 +309,7 @@ components:
     # DATA MODELS
     PatientDetails:
       type: object
+      required: [id, display_name]
       properties:
         id:
           type: string
@@ -314,10 +323,11 @@ components:
         display_birthdate:
           type: string
           format: date
-          example: '1970-06-22'
+          examples: ['1970-06-22']
 
     EncounterDetails:
       type: object
+      required: [id, display_name, date]
       properties:
         id:
           type: string
@@ -327,4 +337,4 @@ components:
         date:
           type: string
           format: date
-          example: '2025-08-10'
+          examples: ['2025-08-10']
