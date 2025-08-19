@@ -1,100 +1,24 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import open from 'open';
+import { v4 as uuidv4 } from 'uuid';
+import { components } from './emr-api-types'; 
 
 // --- Type Definitions for API Contracts ---
 
-// Defines the shape of the response for the available endpoints.
-interface EndpointsResponse {
-  get_patients: string; // endpoint to fetch patient list
-  post_note: string; // endpoint to post notes
 
-  get_patient_summary?: string; // endpoint to fetch summary notes for a patient, use :patientId to capture patient ID in the URL
-  set_patient_summary?: string; // endpoint to set summary notes for a patient, use :patientId to capture patient ID in the URL
-
-  get_patient_encounters?: string; // endpoint to get encounter list for a patient, use :patientId to capture patient ID in the URL 
-  get_encounter_note?: string; // endpint to get notes for a particular encounter, use :patientID to capture patient ID and :encounterId to capture encounter ID in the URL 
-}
-
-// Describes the structure of a single patient's details.
-interface PatientDetails {
-  id: string; // should be url-safe with at max 64 characters 
-  
-  display_name: string;
-  display_id?: string;
-  display_gender?: string;
-  display_birthdate?: string; // yyyy-mm-dd format
-}
-
-// Defines the shape of the response for the patient list endpoint.
-interface PatientListResponse {
-  patients: PatientDetails[];
-}
-
-// Defines the structure of the data sent when posting a new note.
-// It supports both unstructured and structured note formats.
-type PostNoteForm = 
-    { 
-      patient_id: string,
-      encounter_id?: string, // If present, update existing encounter. If absent, create new
-
-      transcript?: string, // if user selects send transcript in prescription settings
-      audio_base64?: string[], // if user selects send audio in prescription settings
-      note_title: string,
-    } & 
-    (
-      { 
-        notes: string  // if user selects unstructured note format
-      } 
-      | 
-      { 
-        notes_json: object,  // if user selects structured note format
-        notes_template: string 
-      }
-    )
-
-// Defines the structure of the response after successfully posting a note.
-interface PostNoteResponse {
-    message: string;
-}
-
-// Defines the structure for getting a patient's summary.
-interface GetSummaryResponse {
-    summary_notes: string;
-}
-
-// Defines the structure for setting a patient's summary.
-interface SetSummaryRequest {
-    summary_notes: string;
-}
-
-// Defines the structure of the response after successfully setting a summary.
-interface SetSummaryResponse {
-    message: string;
-}
-
-// Describes the structure of a single encounter.
-interface EncounterDetails {
-  id: string; // should be url-safe with at max 64 characters
-  display_name: string;
-  date: string; // yyyy-mm-dd format
-}
-
-// Defines the shape of the response for the encounter list endpoint.
-interface EncounterListResponse {
-  encounters: EncounterDetails[];
-}
-
-// Defines the structure for getting a saved note for an encounter.
-interface GetEncounterNoteResponse {
-    note: string;
-}
-
-// Defines the error response structure for all endpoints.
-interface ErrorResponse {
-    error: string;
-    message: string;
-}
+// --- Use the imported types ---
+type EndpointsResponse = components['schemas']['EndpointsResponse'];
+type PatientListResponse = components['schemas']['PatientListResponse'];
+type PostNoteForm = components['schemas']['PostNoteForm'];
+type PostNoteResponse = components['schemas']['PostNoteResponse'];
+type GetSummaryResponse = components['schemas']['GetSummaryResponse'];
+type SetSummaryRequest = components['schemas']['SetSummaryRequest'];
+type SetSummaryResponse = components['schemas']['SetSummaryResponse'];
+type EncounterDetails = components['schemas']['EncounterDetails'];
+type EncounterListResponse = components['schemas']['EncounterListResponse'];
+type GetEncounterNoteResponse = components['schemas']['GetEncounterNoteResponse'];
+type ErrorResponse = components['schemas']['ErrorResponse'];
 
 // --- Type Definitions End Here ---
 
@@ -234,7 +158,25 @@ app.post('/notes', requireApiKey, async (req: Request<{}, {}, PostNoteForm>, res
 
   await open(`${BASE_URL}/view-note?apiKey=${API_KEY}`);
 
-  res.status(200).json({ message: 'Note received and view opened in browser!' });
+   let encounterId = req.body.encounter_id;
+
+  if (!encounterId) {
+    encounterId = `enc_${uuidv4()}`;
+    // Create a new encounter
+    if (!patientEncounters[req.body.patient_id]) {
+        patientEncounters[req.body.patient_id] = [];
+    }
+    patientEncounters[req.body.patient_id].push({
+        id: encounterId,
+        display_name: req.body.note_title,
+        date: new Date().toISOString().split('T')[0],
+    });
+  }
+
+  const noteContent = 'notes' in req.body ? req.body.notes : JSON.stringify(req.body.notes_json, null, 2);
+  encounterNotes[encounterId] = noteContent;
+
+  res.status(200).json({ message: 'Note received and view opened in browser!', encounter_id: encounterId });
 });
 
 // 3. GET /patient-summary/:patientId - To fetch the clinical summary
@@ -344,6 +286,7 @@ app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
         <h1>Received Medical Note</h1>
         <h2>Patient Information</h2>
         <p><span class="label">Patient ID:</span> ${latestNoteData.patient_id}</p>
+        <p><span class="label">Encounter ID:</span> ${latestNoteData.encounter_id || "New"}</p>
 
         ${audioPlayerHtml}
 

@@ -3,17 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "tsx ./src/server.ts"
+    "start": "tsx ./src/server.ts",
+    "dev": "tsx --watch ./src/server.ts",
+    "generate-types": "openapi-typescript ./openapi.yaml --output ./src/emr-api-types.ts",
+    "build": "npm run generate-types",
+    "prestart": "npm run build",
+    "predev": "npm run build"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "open": "^10.2.0"
+    "open": "^10.2.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.12.12",
+    "@types/uuid": "^10.0.0",
+    "openapi-typescript": "^7.9.1",
     "tsx": "^4.10.2"
   }
 }

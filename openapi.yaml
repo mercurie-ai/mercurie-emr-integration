@@ -1,0 +1,330 @@
+openapi: 3.1.0
+info:
+  title: EMR Demo API
+  description: |-
+    A sample API for an Electronic Medical Record (EMR) platform to demonstrate integration with mercurie.ai.
+    This API exposes basic functionalities like fetching patient data, managing clinical notes, and handling encounters.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+
+
+# All protected endpoints will reference this security requirement.
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /endpoints:
+    get:
+      summary: Get Available API Endpoints
+      description: Returns a list of all available endpoints in the API.
+      operationId: getEndpoints
+      responses:
+        '200':
+          description: A JSON object mapping endpoint names to their URLs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EndpointsResponse'
+
+  /patients:
+    get:
+      summary: Get Patient List
+      description: Fetches a list of all patients in the system.
+      operationId: getPatients
+      responses:
+        '200':
+          description: A list of patients.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientListResponse'
+
+  /notes:
+    post:
+      summary: Post a Clinical Note
+      description: Creates a new clinical note or updates an existing one if an encounter_id is provided.
+      operationId: postNote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNoteForm'
+      responses:
+        '200':
+          description: Note was successfully received. The response includes the encounter ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostNoteResponse'
+
+  /patient-summary/{patientId}:
+    get:
+      summary: Get Patient Summary
+      description: Retrieves the clinical summary notes for a specific patient.
+      operationId: getPatientSummary
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the patient.
+      responses:
+        '200':
+          description: The patient's summary notes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSummaryResponse'
+        '404':
+          description: Patient not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Set Patient Summary
+      description: Updates the clinical summary notes for a specific patient.
+      operationId: setPatientSummary
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the patient.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetSummaryRequest'
+      responses:
+        '200':
+          description: Summary updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetSummaryResponse'
+        '400':
+          description: Bad request (e.g., missing summary_notes).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Patient not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /patients/{patientId}/encounters:
+    get:
+      summary: Get Patient Encounters
+      description: Fetches the list of all encounters for a specific patient.
+      operationId: getPatientEncounters
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the patient to fetch encounters for.
+      responses:
+        '200':
+          description: A list of encounters for the patient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterListResponse'
+        '404':
+          description: Patient not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /encounters/{encounterId}:
+    get:
+      summary: Get Encounter Note
+      description: Retrieves the clinical note associated with a specific encounter.
+      operationId: getEncounterNote
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the encounter to fetch the note for.
+      responses:
+        '200':
+          description: The encounter's clinical note.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEncounterNoteResponse'
+        '404':
+          description: Encounter or note not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  # Describes the security scheme. We're using an API Key sent as a Bearer Token.
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API-Key
+      description: "Enter your API key as a Bearer token. Example: 'Bearer your-super-secret-api-key'"
+
+  # Reusable data structures (schemas) are defined here.
+  schemas:
+    # REQUEST/RESPONSE MODELS
+    EndpointsResponse:
+      type: object
+      properties:
+        get_patients:
+          type: string
+          format: url
+        post_note:
+          type: string
+          format: url
+        get_patient_summary:
+          type: string
+          format: url
+        set_patient_summary:
+          type: string
+          format: url
+        get_patient_encounters:
+          type: string
+          format: url
+        get_encounter_note:
+          type: string
+          format: url
+
+    PatientListResponse:
+      type: object
+      properties:
+        patients:
+          type: array
+          items:
+            $ref: '#/components/schemas/PatientDetails'
+
+    PostNoteForm:
+      type: object
+      required:
+        - patient_id
+        - note_title
+      properties:
+        patient_id:
+          type: string
+        encounter_id:
+          type: string
+          description: If present, update existing encounter. If absent, create new.
+        transcript:
+          type: string
+        audio_base64:
+          type: array
+          items:
+            type: string
+            format: byte
+        note_title:
+          type: string
+      oneOf:
+        - required: [notes_json, notes_template]
+          properties:
+            notes_json:
+              type: object
+              description: Structured note format.
+            notes_template:
+              type: string
+        - required: [notes]
+          properties:
+            notes:
+              type: string
+              description: Unstructured note format.
+
+    PostNoteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        encounter_id:
+          type: string
+
+    GetSummaryResponse:
+      type: object
+      properties:
+        summary_notes:
+          type: string
+
+    SetSummaryRequest:
+      type: object
+      properties:
+        summary_notes:
+          type: string
+
+    SetSummaryResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    EncounterListResponse:
+      type: object
+      properties:
+        encounters:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncounterDetails'
+
+    GetEncounterNoteResponse:
+      type: object
+      properties:
+        note:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+    # DATA MODELS
+    PatientDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Should be url-safe with at max 64 characters.
+        display_name:
+          type: string
+        display_id:
+          type: string
+        display_gender:
+          type: string
+        display_birthdate:
+          type: string
+          format: date
+          example: '1970-06-22'
+
+    EncounterDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Should be url-safe with at max 64 characters, should be unique across patients.
+        display_name:
+          type: string
+        date:
+          type: string
+          format: date
+          example: '2025-08-10'
