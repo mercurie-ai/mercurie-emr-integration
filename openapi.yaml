@@ -260,6 +260,7 @@ components:
       properties:
         encounter_id:
           type: string
+          description: The encounter ID of the saved note. If your EMR doesn't support encounter listing, you may set this to "dummy".
 
     GetSummaryResponse:
       type: object
@@ -296,6 +297,7 @@ components:
       properties:
         note:
           type: string
+          description: Previously saved notes for the encounter in text/markdown format. 
 
     ErrorResponse:
       type: object
