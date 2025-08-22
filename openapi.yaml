@@ -245,14 +245,15 @@ components:
           properties:
             notes_json:
               type: object
-              description: Structured note format.
+              description: Structured notes in JSON format.
             notes_template:
               type: string
+              description: The template used to generate the JSON notes.
         - required: [notes]
           properties:
             notes:
               type: string
-              description: Unstructured note format.
+              description: Unstructured notes in text/markdown format.
 
     PostNoteResponse:
       type: object
@@ -268,6 +269,7 @@ components:
       properties:
         summary_notes:
           type: string
+          description: Summary notes in text/markdown format.
 
     SetSummaryRequest:
       type: object
@@ -275,6 +277,7 @@ components:
       properties:
         summary_notes:
           type: string
+          description: Summary notes in text/markdown format.
 
     SetSummaryResponse:
       type: object
