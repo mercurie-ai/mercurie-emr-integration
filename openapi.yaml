@@ -193,24 +193,31 @@ components:
         get_patients:
           type: string
           format: url
+          description: Endpoint to fetch patient list
         post_note:
           type: string
           format: url
+          description: Endpoint to post notes
         patient_chart_page:
           type: string
           format: url
+          description: URL of the patient chart page on the EMR, use :patientId to capture patient ID in the URL
         get_patient_summary:
           type: string
           format: url
+          description: Endpoint to fetch summary notes for a patient, use :patientId to capture patient ID in the URL
         set_patient_summary:
           type: string
           format: url
+          description: Endpoint to post summary notes for a patient, use :patientId to capture patient ID in the URL
         get_patient_encounters:
           type: string
           format: url
+          description: Endpoint to get encounter list for a patient, use :patientId to capture patient ID in the URL 
         get_encounter_note:
           type: string
           format: url
+          description: Endpoint to get notes for a particular encounter, use :encounterId to capture encounter ID in the URL 
 
     PatientListResponse:
       type: object
