@@ -196,6 +196,9 @@ components:
         post_note:
           type: string
           format: url
+        patient_chart_page:
+          type: string
+          format: url
         get_patient_summary:
           type: string
           format: url
@@ -246,6 +249,7 @@ components:
             notes_json:
               type: object
               description: Structured notes in JSON format.
+              additionalProperties: true
             notes_template:
               type: string
               description: The template used to generate the JSON notes.
