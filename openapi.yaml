@@ -41,6 +41,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/PatientListResponse'
 
+  /med-templates:
+    get:
+      summary: Get Drug Templates
+      description: Retrieves the drug order templates
+      operationId: getMedTemplates
+      responses:
+        '200':
+          description: The encounter's clinical note.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetMedicationTemplatesResponse'
+
   /notes:
     post:
       summary: Post a Clinical Note
@@ -217,7 +230,11 @@ components:
         get_encounter_note:
           type: string
           format: url
-          description: Endpoint to get notes for a particular encounter, use :encounterId to capture encounter ID in the URL 
+          description: Endpoint to get notes for a particular encounter, use :encounterId to capture encounter ID in the URL
+        get_medication_templates:
+          type: string
+          format: url
+          description: Endpoint to get drug order templates
 
     PatientListResponse:
       type: object
@@ -228,11 +245,21 @@ components:
           items:
             $ref: '#/components/schemas/PatientDetails'
 
+    GetMedicationTemplatesResponse:
+      type: object
+      required: [med_templates]
+      properties:
+        med_templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationOrder'
+
     PostNoteForm:
       type: object
       required:
         - patient_id
         - note_title
+        - medication_orders
       properties:
         patient_id:
           type: string
@@ -340,6 +367,20 @@ components:
           type: string
           format: date
           examples: ['1970-06-22']
+
+    MedicationOrder:
+      type: object
+      required: [name, strength]
+      properties:
+        name:
+          type: string
+          description: Name of the drug.
+          examples: ['Aspirin', 'Paracetamol']
+        strength:
+          type: string
+          description: Strength of the drug.
+          exmaples: ['81mg', '500mg']
+      additionalProperties: true
 
     EncounterDetails:
       type: object

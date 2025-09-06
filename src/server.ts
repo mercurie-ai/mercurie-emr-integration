@@ -18,6 +18,8 @@ type SetSummaryResponse = components['schemas']['SetSummaryResponse'];
 type EncounterDetails = components['schemas']['EncounterDetails'];
 type EncounterListResponse = components['schemas']['EncounterListResponse'];
 type GetEncounterNoteResponse = components['schemas']['GetEncounterNoteResponse'];
+type GetMedicationTemplatesResponse = components['schemas']['GetMedicationTemplatesResponse']
+type MedicationOrder = components['schemas']['MedicationOrder']
 type ErrorResponse = components['schemas']['ErrorResponse'];
 
 // --- Type Definitions End Here ---
@@ -53,6 +55,61 @@ let patients = [
     display_birthdate: "2000-05-15",
   }
 ];
+
+
+const med_templates: MedicationOrder[] = [
+  {
+    name: "Aspirin",
+    strength: "81 mg",
+    dose: 1,
+    dose_unit: "Tablet",
+    route: "Oral",
+    frequency: "Once daily",
+    patient_instructions: "",
+    prn: false,
+    prn_reason: "",
+    duration: 7,
+    duration_unit: 'Days',
+    dispense_quantity: 7,
+    dispense_unit: 'Tablet',
+    refills: 0,
+    indication: 'Fever'
+  },
+  {
+    name: "Lisinopril",
+    strength: "10 mg",
+    dose: 1,
+    dose_unit: "Tablet",
+    route: "Oral",
+    frequency: "Once daily",
+    patient_instructions: "",
+    prn: false,
+    prn_reason: "",
+    duration: 7,
+    duration_unit: 'Days',
+    dispense_quantity: 7,
+    dispense_unit: 'Tablet',
+    refills: 0,
+    indication: 'Hypertension'
+  },
+  {
+    name: "Paracetamol",
+    strength: "500 mg",
+    dose: 1,
+    dose_unit: "Tablet",
+    route: "Oral",
+    frequency: "Twice daily",
+    patient_instructions: "Take after meals",
+    prn: false,
+    prn_reason: "",
+    duration: 7,
+    duration_unit: 'Days',
+    dispense_quantity: 14,
+    dispense_unit: 'Tablet',
+    refills: 0,
+    indication: 'Fever'
+  },
+]
 
 // This object will hold the clinical summary notes for each patient.
 let patientSummaries: { [key: string]: string } = {
@@ -125,6 +182,7 @@ app.get('/endpoints', requireApiKey, (_req: Request, res: Response<EndpointsResp
 
     const responseData: EndpointsResponse = {
         get_patients: `${BASE_URL}/patients`,
+        get_medication_templates: `${BASE_URL}/med-templates`,
         post_note: `${BASE_URL}/notes`,
         get_patient_summary: `${BASE_URL}/patient-summary/:patientId`,
         set_patient_summary: `${BASE_URL}/patient-summary/:patientId`,
@@ -248,6 +306,18 @@ app.get('/encounters/:encounterId', requireApiKey, (req: Request<{ encounterId: 
 });
 
 
+// 7. GET /med-templates - To fetch medication order templates
+app.get('/med-templates', requireApiKey, (_req: Request, res: Response<GetMedicationTemplatesResponse>) => {
+  console.log(`[${new Date().toISOString()}] GET /patients request received.`);
+
+  const responseData: GetMedicationTemplatesResponse = {
+    med_templates,
+  };
+
+  res.status(200).json(responseData);
+});
+
+
 // A1. GET /view-note - This is the endpoint to display the data
 app.get('/view-note', requireApiKey, (req: Request, res: Response) => {
   if (!latestNoteData) {
@@ -315,12 +385,13 @@ app.listen(PORT, () => {
   console.log(`🔑 Your API Key is: "${API_KEY}"`);
   console.log('---------------------------------------------------------');
   console.log('Available Endpoints:');
-  console.log(`   - Get All Endpoints (GET):     ${BASE_URL}/endpoints`);
-  console.log(`   - Patient List (GET):          ${BASE_URL}/patients`);
-  console.log(`   - Post Notes (POST):           ${BASE_URL}/notes`);
-  console.log(`   - Get Summary (GET):           ${BASE_URL}/patient-summary/:patientId`);
-  console.log(`   - Set Summary (POST):          ${BASE_URL}/patient-summary/:patientId`);
-  console.log(`   - Get Encounters (GET):        ${BASE_URL}/patients/:patientId/encounters`);
-  console.log(`   - Get Encounter Note (GET):    ${BASE_URL}/encounters/:encounterId`);
+  console.log(`   - Get All Endpoints (GET):            ${BASE_URL}/endpoints`);
+  console.log(`   - Patient List (GET):                 ${BASE_URL}/patients`);
+  console.log(`   - Post Notes (POST):                  ${BASE_URL}/notes`);
+  console.log(`   - Get Summary (GET):                  ${BASE_URL}/patient-summary/:patientId`);
+  console.log(`   - Set Summary (POST):                 ${BASE_URL}/patient-summary/:patientId`);
+  console.log(`   - Get Encounters (GET):               ${BASE_URL}/patients/:patientId/encounters`);
+  console.log(`   - Get Encounter Note (GET):           ${BASE_URL}/encounters/:encounterId`);
+  console.log(`   - Get Drug Order Templates (GET):     ${BASE_URL}/med-templates`);
   console.log('\nWhen you post a note, a new browser tab will open to display it.');
 });

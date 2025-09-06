@@ -11,7 +11,7 @@ The primary purpose of this server is to provide clients with a clear, working e
 *   **OpenAPI Driven**: The entire API contract is defined in `openapi.yaml`, enabling automatic generation of client SDKs, server stubs, and documentation.
 *   **Type Safe**: TypeScript types are generated directly from the OpenAPI spec, eliminating inconsistencies between the API definition and the server's implementation.
 *   **Patient & Encounter Management**: Exposes endpoints to fetch patients, retrieve encounter histories, and get specific encounter notes.
-*   **Note Submission**: Provides an endpoint to receive medical notes from Mercurie. New notes can create new encounters, and the unique `encounter_id` is returned in the response.
+*   **Note & Drug Order Submission**: Provides an endpoint to receive medical notes, including drug orders, from Mercurie. New notes can create new encounters, and the unique `encounter_id` is returned in the response.
 *   **Clinical Summaries**: Includes endpoints to get and set high-level clinical summary notes for a patient.
 *   **Zero-DB Setup**: Uses in-memory storage for demonstration purposes, requiring no external database.
 *   **Instant Note Preview**: Automatically opens a browser tab to display the content of a newly submitted note.
@@ -72,13 +72,14 @@ These commands re-generate the TypeScript interfaces into `src/emr-api-types.ts`
 🔑 Your API Key is: "your-super-secret-api-key"
 ---------------------------------------------------------
 Available Endpoints:
-   - Get All Endpoints (GET):     http://localhost:3001/endpoints
-   - Patient List (GET):          http://localhost:3001/patients
-   - Post Notes (POST):           http://localhost:3001/notes
-   - Get Summary (GET):           http://localhost:3001/patient-summary/:patientId
-   - Set Summary (POST):          http://localhost:3001/patient-summary/:patientId
-   - Get Encounters (GET):        http://localhost:3001/patients/:patientId/encounters
-   - Get Encounter Note (GET):    http://localhost:3001/encounters/:encounterId
+   - Get All Endpoints (GET):           http://localhost:3001/endpoints
+   - Patient List (GET):                http://localhost:3001/patients
+   - Post Notes (POST):                 http://localhost:3001/notes
+   - Get Summary (GET):                 http://localhost:3001/patient-summary/:patientId
+   - Set Summary (POST):                http://localhost:3001/patient-summary/:patientId
+   - Get Encounters (GET):              http://localhost:3001/patients/:patientId/encounters
+   - Get Encounter Note (GET):          http://localhost:3001/encounters/:encounterId
+   - Get Drug Order Templates (GET):    http://localhost:3001/med-templates
 
 When you post a note, a new browser tab will open to display it.
 ```
