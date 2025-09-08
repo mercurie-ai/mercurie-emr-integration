@@ -1,14 +1,24 @@
 {
-  "name": "mercurie-emr-integration",
-  "version": "1.0.0",
-  "private": true,
+  "name": "@mercurie/emr-integration",
+  "description": "OpenAPI specification for the Mercurie EMR Integration API",
+  "version": "1.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "openapi.yaml"
+  ],
   "scripts": {
     "start": "tsx ./src/server.ts",
     "dev": "tsx --watch ./src/server.ts",
     "generate-types": "openapi-typescript ./openapi.yaml --output ./src/emr-api-types.ts",
     "build": "npm run generate-types",
     "prestart": "npm run build",
-    "predev": "npm run build"
+    "predev": "npm run build",
+    "use:npmReadme": "mv README.md git.README.md && mv npm.README.md README.md",
+    "use:gitReadme": "mv README.md npm.README.md && mv git.README.md README.md",
+    "prepack": "npm run use:npmReadme",
+    "postpack": "npm run use:gitReadme"
   },
   "dependencies": {
     "cors": "^2.8.5",
