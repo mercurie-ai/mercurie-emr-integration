@@ -94,3 +94,12 @@ This project is designed to be "spec-first". If you need to make changes to the 
     npm run generate-types
     ```
 3.  **Implement the Logic**: Update `server.ts` to implement the new functionality. TypeScript will guide you by showing errors if your code doesn't match the newly generated types.
+
+
+## Adapters
+
+These adapters are integration layers connecting Mercurie to various EMRs using the API schema defined in this project:
+
+- [mercurie-ai/mercurie-emr-integration-openmrs](https://github.com/mercurie-ai/mercurie-emr-integration-openmrs): integration with OpenMRS.
+
+If you have developed an open source adapter that you would like to share with the community, please drop us a message or create a pull request to update this README.
