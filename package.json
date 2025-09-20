@@ -1,7 +1,7 @@
 {
   "name": "@mercurie/emr-integration",
   "description": "OpenAPI specification for the Mercurie EMR Integration API",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "publishConfig": {
     "access": "public"
   },

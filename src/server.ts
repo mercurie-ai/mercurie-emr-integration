@@ -39,7 +39,7 @@ const API_KEY = 'your-super-secret-api-key';
 let latestNoteData: PostNoteForm | null = null;
 
 
-let patients = [
+let allPatients = [
   {
     id: 'pat_12345_dummy',
     display_name: 'John Doe',
@@ -53,7 +53,21 @@ let patients = [
     display_id: 'JD-002',
     display_gender: 'Female',
     display_birthdate: "2000-05-15",
-  }
+  },
+  {
+  id: 'pat_abcde_dummy',
+  display_name: 'Robert Johnson',
+  display_id: 'RJ-001',
+  display_gender: 'Male',
+  display_birthdate: "1985-11-30",
+},
+{
+  id: 'pat_fghij_dummy',
+  display_name: 'Emily White',
+  display_id: 'EW-001',
+  display_gender: 'Female',
+  display_birthdate: "1992-02-20",
+}
 ];
 
 
@@ -197,8 +211,20 @@ app.get('/endpoints', requireApiKey, (_req: Request, res: Response<EndpointsResp
 app.get('/patients', requireApiKey, (_req: Request, res: Response<PatientListResponse>) => {
   console.log(`[${new Date().toISOString()}] GET /patients request received.`);
 
+  const todaysAppointments = [allPatients[0], allPatients[3]]; // John and Emily
+  const myInpatients = [allPatients[1], allPatients[2]]; // Jane and Robert
+
   const responseData: PatientListResponse = {
-    patients,
+    patient_lists: [
+      {
+        list_name: "Today's Appointments",
+        patients: todaysAppointments,
+      },
+      {
+        list_name: "My Inpatients",
+        patients: myInpatients,
+      },
+    ]
   };
 
   res.status(200).json(responseData);
